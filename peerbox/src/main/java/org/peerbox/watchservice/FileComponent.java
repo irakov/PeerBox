@@ -10,8 +10,10 @@ public interface FileComponent {
 	public boolean isFile();
 	
 	public String getContentHash();
+	public String getStructureHash();
+	public void setStructureHash(String hash);
 
-	public Action getAction();
+	public IAction getAction();
 	
 	public void setParent(FolderComposite parent);
 	public FolderComposite getParent();
@@ -21,7 +23,11 @@ public interface FileComponent {
 	 * in which this FileComponent is contained.
 	 */
 	public default void bubbleContentHashUpdate(){
-		boolean hasChanged = updateContentHash();
+		bubbleContentHashUpdate(null);
+	}
+	
+	public default void bubbleContentHashUpdate(String contentHash){
+		boolean hasChanged = updateContentHash(contentHash);
 		if(hasChanged){
 			getParent().bubbleContentHashUpdate();
 		}
@@ -33,15 +39,17 @@ public interface FileComponent {
 	
 	public FileComponent getComponent(String path);
 	
+	public boolean updateContentHash(String contentHash);
 	public boolean updateContentHash();
-	
 	public Path getPath();
-	public void setPath(Path parent);
-	
+	public void setParentPath(Path parent);
+	public void setPath(Path path);
 
 	public boolean getActionIsUploaded();
 	public void setActionIsUploaded(boolean isUploaded);
 	
 	public boolean isReady();
+	
+	public void propagatePathChangeToChildren();
 
 }

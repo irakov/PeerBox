@@ -25,7 +25,7 @@ public class FileWalker extends AbstractWatchService {
 	
 	public FileWalker(Path rootDirectory, FileEventManager eventManager){
 		this.rootDirectory = rootDirectory;
-		this.fileTree = new FolderComposite(rootDirectory, false);
+		this.fileTree = new FolderComposite(rootDirectory, true);
 		this.eventManager = eventManager;
 	}
 	
@@ -126,11 +126,21 @@ public class FileWalker extends AbstractWatchService {
 
 		@Override
 		public FileVisitResult visitFile(Path path, BasicFileAttributes attr) throws IOException {
-			filesystemView.put(path, new Action(path));
+			filesystemView.put(path, new Action(eventManager));
+//			fileTree.putComponent(path, ne)
 			logger.debug("Found file {}", path);
 			if(throwCreates){
 				eventManager.onLocalFileCreated(path);
+			} else {
+				String oldstr = fileTree.getStructureHash();
+				if(path.toFile().isDirectory()){
+					fileTree.putComponent(path.toString(), new FolderComposite(path, false));
+				} else {
+					fileTree.putComponent(path.toString(), new FileLeaf(path, false));
+				}
+				logger.debug("updated structure hash: of {} from {} to {}", fileTree.getPath(), oldstr, fileTree.getStructureHash());
 			}
+			
 			return FileVisitResult.CONTINUE;
 		}
 

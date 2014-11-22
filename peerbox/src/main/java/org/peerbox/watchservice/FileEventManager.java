@@ -6,11 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.Vector;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
@@ -22,27 +20,23 @@ import org.hive2hive.core.events.framework.interfaces.file.IFileEvent;
 import org.hive2hive.core.events.framework.interfaces.file.IFileMoveEvent;
 import org.hive2hive.core.events.framework.interfaces.file.IFileShareEvent;
 import org.hive2hive.core.events.framework.interfaces.file.IFileUpdateEvent;
-import org.hive2hive.core.exceptions.IllegalFileLocation;
 import org.hive2hive.core.exceptions.NoPeerConnectionException;
 import org.hive2hive.core.exceptions.NoSessionException;
 import org.hive2hive.processframework.exceptions.InvalidProcessStateException;
 import org.peerbox.FileManager;
 import org.peerbox.h2h.IFileRecoveryRequestEvent;
-import org.peerbox.watchservice.states.RemoteDeleteState;
-import org.peerbox.watchservice.states.RemoteMoveState;
-import org.peerbox.watchservice.states.RemoteUpdateState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 
-public class FileEventManager implements ILocalFileEventListener, org.hive2hive.core.events.framework.interfaces.IFileEventListener {
+public class FileEventManager implements IFileEventManager, ILocalFileEventListener, org.hive2hive.core.events.framework.interfaces.IFileEventListener {
 	
 	private static final Logger logger = LoggerFactory.getLogger(FileEventManager.class);
 	
 	private Thread executorThread;
-	private ActionExecutor actionExecutor;
+
     private FileManager fileManager;
     
     private BlockingQueue<FileComponent> fileComponentQueue; 
@@ -53,14 +47,16 @@ public class FileEventManager implements ILocalFileEventListener, org.hive2hive.
     private Map<String, FileLeaf> recoveredFileVersions = new HashMap<String, FileLeaf>();
     
     private boolean maintainContentHashes = true;
+    private Path rootPath;
 
     
     public FileEventManager(Path rootPath, boolean waitForNotifications) {
-    	fileComponentQueue = new PriorityBlockingQueue<FileComponent>(1000, new FileActionTimeComparator());
+    	fileComponentQueue = new PriorityBlockingQueue<FileComponent>(2000, new FileActionTimeComparator());
     	fileTree = new FolderComposite(rootPath, true, true);
-    	actionExecutor = new ActionExecutor(this);
+    	this.rootPath = rootPath;
 		executorThread = new Thread(new ActionExecutor(this, waitForNotifications));
 		executorThread.start();
+		
     }
     
     /**
@@ -72,13 +68,13 @@ public class FileEventManager implements ILocalFileEventListener, org.hive2hive.
     	fileComponentQueue = new PriorityBlockingQueue<FileComponent>(10, new FileActionTimeComparator());
     	fileTree = new FolderComposite(rootPath, true);
         this.maintainContentHashes = maintainContentHashes;
-		
+		this.rootPath = rootPath;
         executorThread = new Thread(new ActionExecutor(this, waitForNotifications));
 		executorThread.start();
     }
     
-    public void setAndStartActionExecutor(ActionExecutor executor){
-    	//actionExecutor.t
+    public Path getRootPath(){
+    	return rootPath;
     }
     
     /**
@@ -97,83 +93,44 @@ public class FileEventManager implements ILocalFileEventListener, org.hive2hive.
 	 */
 	@Override
 	public void onLocalFileCreated(Path path) {
-		logger.debug("onLocalFileCreate: {}", path);
-		FileComponent fileComponent = getFileComponent(path);
-		if(fileComponent != null){
-			logger.trace("Created file or folder {} already exists, handling cancelled.", path);
-			return;
-		}
-		
-		fileComponent = createFileComponent(path, Files.isRegularFile(path));
+		logger.trace("onLocalFileCreated: {}", path);
+		FileComponent file = getOrCreateFileComponent(path);
+
 		if(path.toFile().isDirectory()){
-			FolderComposite moveCandidate = findSourceOfOptimizedMove(path);
-			if(moveCandidate != null){
-				System.out.println("Folder Move detected!");
-				initiateOptimizedMove(moveCandidate, path);
-				return;
-			}
-		}
-		
-		handleMoveAndCreateCases(fileComponent);
+			logger.debug("BEFORE Structure hash for {} is {} ", path, file.getStructureHash());
+			String structureHash = discoverSubtreeStructure(path);
+			logger.debug("AFTER Structure hash for {} is {} ", path, structureHash);
+			file.setStructureHash(structureHash);
 			
-		updateDataStructures(path, fileComponent);	
+		}
+		file.getAction().handleLocalCreateEvent();
+		
 		if(path.toFile().isDirectory()){
 			discoverSubtreeCompletely(path);
+
 		}
 	}
-
-	/**
-	 * This helper method distinguishes between creates 
-	 * corresponding to move actions and conventional creates.
-	 * Based on the type of the event, actions are performed as
-	 * defined in the state machine.
-	 * @param fileComponent
-	 */
-	private void handleMoveAndCreateCases(FileComponent fileComponent) {
-		FileComponent deletedComponent = findDeletedByContent(fileComponent);
-		Action createAction = fileComponent.getAction();
-		if(deletedComponent == null) {
-			createAction.handleLocalCreateEvent();
-		} else {
-			Action deleteAction = deletedComponent.getAction();
-			if(!fileComponentQueue.remove(deletedComponent)){
-				System.err.println("Unexpected remove behaviour");
+	
+	private FileComponent getOrCreateFileComponent(Path path){
+		return getOrCreateFileComponent(path, null);
+	}
+	
+	private FileComponent getOrCreateFileComponent(Path path, IFileEvent event) {
+		FileComponent file = fileTree.getComponent(path.toString());
+		if(file == null){
+			logger.trace("FileComponent {} is new and now created.", path);
+			if(event == null){
+				file = createFileComponent(path, Files.isRegularFile(path));
+			} else {
+				file = createFileComponent(path, event.isFile());
 			}
-			createAction.handleLocalMoveEvent(deleteAction.getFilePath());
+
+			file.getAction().setFile(file);
+			file.getAction().setEventManager(this);
 		}
+		logger.debug("File {} has state {}", file.getPath(), file.getAction().getCurrentState().getClass());
+		return file;
 	}
-	
-	/**
-	 * This helper method puts fileComponent to the tree, refreshes the queue and
-	 * bubbles content hash updates.
-	 * @param path
-	 * @param fileComponent
-	 */
-	private void updateDataStructures(Path path, FileComponent fileComponent) {
-		getFileTree().putComponent(path.toString(), fileComponent);
-		fileComponentQueue.remove(fileComponent);
-		fileComponentQueue.add(fileComponent);
-		fileComponent.bubbleContentHashUpdate();
-	}
-
-	private FolderComposite findSourceOfOptimizedMove(Path path) {
-		String moveCandidateHash = discoverSubtreeStructure(path);
-		return deletedByContentNamesHash.get(moveCandidateHash);
-	}
-
-
-
-//		fileComponentQueue.remove(fileComponent);
-//		recoveredFileVersions.remove(fileComponent);
-
-	
-private void addRecursively(FolderComposite componentAsFolder) {
-	SortedMap<String, FileComponent> children = componentAsFolder.getChildren();
-	for(FileComponent child : children.values()){
-		child.getAction().handleLocalCreateEvent();
-		fileComponentQueue.add(child);
-	}
-}
 
 //	public void onFileRecovered(Path path){
 //		FileComponent fileComponent = getFileComponent(path);
@@ -189,39 +146,21 @@ private void addRecursively(FolderComposite componentAsFolder) {
 
 	@Override
 	public void onLocalFileModified(Path path) {
-		logger.debug("onFileModified: {}", path);
+		logger.debug("onLocalFileModified: {}", path);
 		
-		//Get component to modify and remove it from action queue
-		FileComponent toModify = getFileComponent(path);
-		if(toModify == null){
+		FileComponent file = getOrCreateFileComponent(path);
+		if(file.isFolder()){
+			logger.debug("File {} is a folder. Update rejected.", path);
 			return;
 		}
-		
-		if(toModify.isFolder()) {
-			 // a folder can have only 1 version in H2H. Hence, we cannot execute an update!
+		String newHash = PathUtils.computeFileContentHash(path);
+		if(file.getContentHash().equals(newHash)){
+			logger.debug("Content hash did not change for file {}. Update rejected.", path);
 			return;
 		}
-		Action lastAction = toModify.getAction();
-		fileComponentQueue.remove(toModify);
-		
-		//handle the modify-event
-		lastAction.handleLocalModifyEvent();
-		
-		updateChildrenTimestamps(toModify);
-		fileComponentQueue.add(toModify);
+		file.getAction().handleLocalUpdateEvent();
 	}
 
-	private void updateChildrenTimestamps(FileComponent toModify) {
-		if(toModify instanceof FolderComposite){
-			FolderComposite toModifyAsFolderComposite = (FolderComposite)toModify;
-			for(FileComponent child : toModifyAsFolderComposite.getChildren().values()){
-				if(fileComponentQueue.remove(child)){
-					child.getAction().updateTimestamp();
-					fileComponentQueue.add(child);
-				}
-			}
-		}
-	}
 
 	//TODO: remove children from actionQueue as well!
 	/**
@@ -235,75 +174,21 @@ private void addRecursively(FolderComposite componentAsFolder) {
 	@Override
 	public void onLocalFileDeleted(Path path) {
 		logger.debug("onLocalFileDelete: {}", path);
-		
-		//Get the fileComponent and remove it from the action queue
-//		FileComponent deletedComponent = 
-//		if(deletedComponent == null){
-//			return;
-//		}
-		
-		FileComponent deletedComponent = deleteFileComponent(path);
-		if(deletedComponent == null){
-			logger.debug("File to delete not found{}", path);
-			return;
-		}
-		
-		fileComponentQueue.remove(deletedComponent);
-		
-		if(deletedComponent.getAction().getCurrentState() instanceof RemoteDeleteState){
-			deletedComponent.getAction().handleLocalDeleteEvent();
-			try {
-				deletedComponent.getAction().execute(fileManager);
-			} catch (NoSessionException | NoPeerConnectionException | IllegalFileLocation
-					| InvalidProcessStateException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		} else if(deletedComponent.getAction().getCurrentState() instanceof RemoteUpdateState){
-			deletedComponent.getAction().handleLocalDeleteEvent();
-		} else {
-			// handle the delete event
-			deletedComponent.getAction().handleLocalDeleteEvent();
-			
-			//only add the file to the set of deleted files and to the action queue
-			//if it was uploaded to the DHT before.
-			if(deletedComponent.getActionIsUploaded()){
-				
-				deletedByContentHash.put(deletedComponent.getContentHash(), deletedComponent);
-				if(deletedComponent instanceof FolderComposite){
-					FolderComposite deletedComponentAsFolder = (FolderComposite)deletedComponent;
-					deletedByContentNamesHash.put(deletedComponentAsFolder.getContentNamesHash(), deletedComponentAsFolder);
-				}
-				
-				fileComponentQueue.add(deletedComponent);
-			}
-		}
-		
+		FileComponent file = getOrCreateFileComponent(path);
+		logger.debug("OnLocalFileDelete structure hash of {} is  {}", path, file.getStructureHash());
+		file.getAction().handleLocalDeleteEvent();
 	}
 	
 	@Override
 	@Handler
 	public void onFileAdd(IFileAddEvent fileEvent){
 		logger.debug("onFileAdd: {}", fileEvent.getFile().getPath());
+		
 		Path path = fileEvent.getFile().toPath();
-//		FileLeaf recoveredVersion = recoveredFileVersions.get(path.toString());
-//		if(recoveredVersion != null){
-//			logger.trace("Downloaded file is a recovered version: {}", path);
-			//if it is a recovered file, not state change is done. we stay in InitialState until create event occurs.
-//			getFileTree().putComponent(path.toString(), recoveredVersion);
-//		} else {
-//			logger.trace("Downloaded file is a regular file: {}", path);
-			FileComponent fileComponent = getFileComponent(path);
-			if(fileComponent == null) {
-				fileComponent = createFileComponent(path, fileEvent.isFile());
-				getFileTree().putComponent(path.toString(), fileComponent);
-				fileComponent.getAction().handleRemoteUpdateEvent();
-				fileComponentQueue.add(fileComponent);
-			} else {
-				logger.error("Remotely added file already exists locally: {}", path);
-			}
-			
-//		}
+		FileComponent file = getOrCreateFileComponent(path, fileEvent);
+		file.getAction().setFile(file);
+		file.getAction().setEventManager(this);
+		file.getAction().handleRemoteCreateEvent();
 	}
 	
 
@@ -313,83 +198,65 @@ private void addRecursively(FolderComposite componentAsFolder) {
 		logger.debug("onFileDelete: {}", fileEvent.getFile().getPath());
 		
 		Path path = fileEvent.getFile().toPath();
-		FileComponent fileComponent = getFileComponent(path);
-		if(fileComponent != null) {
-			fileComponent.getAction().handleRemoteDeleteEvent();
-		}
+		FileComponent file = getOrCreateFileComponent(path, fileEvent);
+		file.getAction().handleRemoteDeleteEvent();
 	}
 
 	@Override
 	@Handler
 	public void onFileUpdate(IFileUpdateEvent fileEvent) {
-		// TODO Auto-generated method stub
-		
+		Path path = fileEvent.getFile().toPath();
+		logger.debug("onFileUpdate: {}", path);
+
+		FileComponent file = getOrCreateFileComponent(path);
+		file.getAction().handleRemoteUpdateEvent();
 	}
 	
 	@Override
 	@Handler
 	public void onFileMove(IFileMoveEvent fileEvent) {
 		logger.debug("onFileMove: {}", fileEvent.getFile().getPath());
-		
-		// TODO Auto-generated method stub
 
 		Path srcPath = fileEvent.getSrcFile().toPath();
 		Path dstPath = fileEvent.getDstFile().toPath();
+		logger.debug("Handle move from {} to {}", srcPath, dstPath);
 		
-		FileComponent fileComponent = getFileComponent(srcPath);
-		if(fileComponent == null){
-			System.err.println("Error: Component to move does not exist, this should not happen");
-			fileComponent = createFileComponent(srcPath, fileEvent.isFile());
-			getFileTree().putComponent(srcPath.toString(), fileComponent);		
-		}
-		FileComponent deletedComponent = getFileTree().deleteComponent(srcPath.toString());
-		fileComponentQueue.remove(deletedComponent);
-		getFileTree().putComponent(dstPath.toString(), deletedComponent);
-//		//switch to remoteMoveState()
-		deletedComponent.getAction().getCurrentState().handleRemoteMoveEvent(srcPath);
-		fileComponentQueue.add(deletedComponent);
+		FileComponent source = getOrCreateFileComponent(srcPath);
+		source.getAction().handleRemoteMoveEvent(dstPath);
 	}
 	
 	public void onFileRecoveryRequest(IFileRecoveryRequestEvent fileEvent){
 		File currentFile = fileEvent.getFile();
 		Path recoveredFilePath = PathUtils.getRecoveredFilePath(currentFile.toString(), fileEvent.getVersionToRecover());
-		
 		if(currentFile == null || currentFile.isDirectory()){
 			logger.error("Try to recover non-existing file or directory: {}", currentFile.getPath());
 			return;
 		}
-		logger.trace("Put file recover request to map using key: {}", recoveredFilePath.toString());
-		FileLeaf versionToRecover = new FileLeaf(recoveredFilePath);
-		recoveredFileVersions.put(recoveredFilePath.toString(), versionToRecover);
-		versionToRecover.getAction().handleRecoverEvent(fileEvent.getVersionToRecover());
-		fileComponentQueue.add(versionToRecover);
 		
-		try {
-			logger.trace("Initiate file recovery in FileEventManager for file {}", recoveredFilePath);
-			fileManager.recover(currentFile, new PeerboxVersionSelector(fileEvent.getVersionToRecover()));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSessionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoPeerConnectionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidProcessStateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		// add file to recoveredFileVersions
-		// start recovery
-		
-	}
+		FileComponent file = fileTree.getComponent(currentFile.getPath());
+		file.getAction().handleRecoverEvent(fileEvent.getVersionToRecover());
+//		File currentFile = fileEvent.getFile();
+//		Path recoveredFilePath = PathUtils.getRecoveredFilePath(currentFile.toString(), fileEvent.getVersionToRecover());
+//		
+//		if(currentFile == null || currentFile.isDirectory()){
+//			logger.error("Try to recover non-existing file or directory: {}", currentFile.getPath());
+//			return;
+//		}
+//		logger.trace("Put file recover request to map using key: {}", recoveredFilePath.toString());
+//		FileLeaf versionToRecover = new FileLeaf(recoveredFilePath);
+//		recoveredFileVersions.put(recoveredFilePath.toString(), versionToRecover);
+//		versionToRecover.getAction().handleRecoverEvent(fileEvent.getVersionToRecover());
+//		fileComponentQueue.add(versionToRecover);
+//		
+//		try {
+//			logger.trace("Initiate file recovery in FileEventManager for file {}", recoveredFilePath);
+//			fileManager.recover(currentFile, new PeerboxVersionSelector(fileEvent.getVersionToRecover()));
+//		} catch (FileNotFoundException | IllegalArgumentException | NoSessionException | NoPeerConnectionException | InvalidProcessStateException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} 
 
-	private FileComponent getFileComponent(Path path){
-		return getFileTree().getComponent(path.toString());
+		
 	}
 
 	private FileComponent createFileComponent(Path path, boolean isFile) {
@@ -438,11 +305,16 @@ private void addRecursively(FolderComposite componentAsFolder) {
 	 * @param createdComponent The previously deleted component
 	 * @return
 	 */
-	private FileComponent findDeletedByContent(FileComponent createdComponent){
+	public FileComponent findDeletedByContent(FileComponent createdComponent){
 		FileComponent deletedComponent = null;
 		String contentHash = createdComponent.getContentHash();
+		logger.trace("Contenthash to search for: {}", contentHash);
 		Set<FileComponent> deletedComponents = deletedByContentHash.get(contentHash);
 
+		
+		for(FileComponent comp : deletedComponents){
+			logger.trace("Compoonent {} with hash {}", comp.getPath(), comp.getContentHash());
+		}
 		long minTimeDiff = Long.MAX_VALUE;
 		for(FileComponent candidate : deletedComponents) {
 			long timeDiff = createdComponent.getAction().getTimestamp() - candidate.getAction().getTimestamp();
@@ -455,7 +327,7 @@ private void addRecursively(FolderComposite componentAsFolder) {
 		return deletedComponent;
 	}
 
-	private FileComponent deleteFileComponent(Path filePath){
+	public FileComponent deleteFileComponent(Path filePath){
 		return getFileTree().deleteComponent(filePath.toString());
 	}
 	
@@ -487,7 +359,7 @@ private void addRecursively(FolderComposite componentAsFolder) {
 		return this.deletedByContentHash;
 	}
 
-	public FolderComposite getFileTree(){ //maybe synchronize this method?
+	public synchronized FolderComposite getFileTree(){ //maybe synchronize this method?
 		return fileTree;
 	}
 

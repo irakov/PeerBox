@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FileLeaf extends AbstractFileComponent implements FileComponent{
-	private Action action;
+	private IAction action;
 	private Path path;
 	private Path fileName;
 	private String contentHash;
@@ -23,7 +23,7 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 	public FileLeaf(Path path){
 		this.path = path;
 		this.fileName = path.getFileName();
-		this.action = new Action(path);
+		this.action = new Action();
 		this.contentHash = "";
 		updateContentHash();
 	}
@@ -31,7 +31,7 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 	public FileLeaf(Path path, boolean maintainContentHashes){
 		this.path = path;
 		this.fileName = path.getFileName();
-		this.action = new Action(path);
+		this.action = new Action();
 		this.contentHash = "";
 		if(maintainContentHashes){
 			updateContentHash();
@@ -40,7 +40,7 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 	}
 
 	@Override
-	public Action getAction() {
+	public IAction getAction() {
 		return this.action;
 	}
 
@@ -69,6 +69,9 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 	@Override
 	public void bubbleContentHashUpdate() {
 		boolean hasChanged = updateContentHash();
+		if(path == null){
+			logger.trace("path is null!!!");
+		}
 		if(hasChanged){
 			parent.bubbleContentHashUpdate();
 		}
@@ -84,28 +87,30 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 		return this.path;
 	}
 	
+
+	public boolean updateContentHash() {
+		return updateContentHash(null);
+	}
+	
 	/**
 	 * Computes and updates this FileLeafs contentHash property.
-	 * @return true if the contentHash hash changed, false otherwise
+	 * @return true if the contentHash hash changed, false otherwise.
+	 * @param newHash provided content hash. If this is null, the content hash is
+	 * calculated on the fly. If this is not null, it is assumed to be the correct
+	 * hash of the file's content at the time of the call.
 	 */
 	@Override
-	public boolean updateContentHash() {
-		String newHash = "";
-		if(path != null && path.toFile() != null){
-			try {
-				byte[] rawHash = HashUtil.hash(path.toFile());
-				if(rawHash != null){
-					newHash = Action.createStringFromByteArray(rawHash);
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		logger.debug("File {} has contentHash: {}", path, newHash);
+	public boolean updateContentHash(String newHash) {
+		if(newHash == null){
+			newHash = PathUtils.computeFileContentHash(getPath());
+		} 
 		if(!contentHash.equals(newHash)){
+			logger.debug("Updated contenthash from {} to {}", contentHash, newHash);
 			contentHash = newHash;
+			
 			return true;
 		} else {
+			logger.debug("No content hash update: {}", contentHash);
 			return false;
 		}
 	}
@@ -126,13 +131,18 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 	}
 	
 	@Override
-	public void setPath(Path parentPath){	
+	public void setParentPath(Path parentPath){	
 		if(parentPath != null){
 			this.path = Paths.get(new File(parentPath.toString(), fileName.toString()).getPath());
 			logger.debug("Set path to {}", path);
-			action.setPath(this.path);
 		}
 		
+	}
+	
+	@Override
+	public void setPath(Path path){
+		this.path = path;
+		this.fileName = path.getFileName();
 	}
 
 	@Override
@@ -142,7 +152,26 @@ public class FileLeaf extends AbstractFileComponent implements FileComponent{
 
 	@Override
 	public boolean isReady() {
-		// TODO Auto-generated method stub
-		return true;
+		if(parent.getActionIsUploaded()){
+			return true;
+		}
+		return false;
 	}
+
+	@Override
+	public String getStructureHash() {
+		// TODO Auto-generated method stub
+		return "";
+	}
+
+	@Override
+	public void setStructureHash(String hash) {
+		logger.debug("setStructureHash(String) is not defined on FileLeaf.");
+	}
+
+	@Override
+	public void propagatePathChangeToChildren() {
+		return;
+	}
+
 }

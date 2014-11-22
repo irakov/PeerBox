@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.peerbox.utils.FileTestUtils;
 
@@ -16,7 +17,7 @@ public class AddDelete extends FileIntegrationTest {
 	public void singleFolderTest() throws IOException {
 		// ADD
 		Path folder = addSingleFolder();
-		
+		deleteSingleFolder(folder);
 		// DELETE
 //		deleteSingleFolder(folder);
 	}
@@ -32,7 +33,7 @@ public class AddDelete extends FileIntegrationTest {
 	public void manyFoldersTest() throws IOException {
 		// ADD
 		List<Path> folders = addManyFolders();
-		
+		deleteManyFolders(folders);
 		// DELETE
 //		deleteManyFolders(folders);
 	}
@@ -55,7 +56,7 @@ public class AddDelete extends FileIntegrationTest {
 		assertSyncClientPaths();
 	}
 	
-	@Test
+	@Test 
 	public void singleFolderInFolderTest() throws IOException {
 		// ADD
 		List<Path> folders = addSingleFolderInFolder();
@@ -92,9 +93,14 @@ public class AddDelete extends FileIntegrationTest {
 	public void manyFoldersInFolderTest() throws IOException {
 		// ADD
 		List<Path> folders = addManyFoldersInFolder();
-		
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		// DELETE
-//		deleteManyFoldersInFolder(folders);
+		deleteManyFoldersInFolder(folders);
 	}
 	
 	private List<Path> addManyFoldersInFolder() throws IOException {
@@ -103,7 +109,7 @@ public class AddDelete extends FileIntegrationTest {
 		Path folder = FileTestUtils.createRandomFolder(masterRootPath);
 		List<Path> subFolders = FileTestUtils.createRandomFolders(folder, 20);
 		
-		folders.add(folder);
+//		folders.add(folder);
 		folders.addAll(subFolders);
 		
 		waitForExists(folders, WAIT_TIME_LONG);
@@ -142,6 +148,15 @@ public class AddDelete extends FileIntegrationTest {
 	public void manyFilesTest() throws IOException {
 		// ADD
 		List<Path> files = addManyFiles();
+		
+		// DELETE
+//		deleteManyFiles(files);
+	}
+	
+	@Test
+	public void manyFilesStressTest() throws IOException {
+		// ADD
+		List<Path> files = addManyFiles(600, WAIT_TIME_STRESSTEST);
 		
 		// DELETE
 //		deleteManyFiles(files);
@@ -202,7 +217,7 @@ public class AddDelete extends FileIntegrationTest {
 		List<Path> files = addManyFilesInManyFolders();
 		
 		// DELETE
-//		deleteManyFilesInManyFolders(files);
+		deleteManyFilesInManyFolders(files);
 	}
 	
 	private void deleteManyFilesInManyFolders(List<Path> files) throws IOException {

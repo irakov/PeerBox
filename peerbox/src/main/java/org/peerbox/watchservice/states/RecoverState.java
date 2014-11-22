@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.file.Path;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.hive2hive.core.exceptions.IllegalFileLocation;
 import org.hive2hive.core.exceptions.NoPeerConnectionException;
 import org.hive2hive.core.exceptions.NoSessionException;
@@ -27,49 +28,49 @@ public class RecoverState extends AbstractActionState{
 	}
 
 	@Override
-	public AbstractActionState handleLocalCreateEvent() {
+	public AbstractActionState changeStateOnLocalCreate() {
 		// TODO Auto-generated method stub
 		return new LocalCreateState(action);
 	}
 
 	@Override
-	public AbstractActionState handleLocalDeleteEvent() {
+	public AbstractActionState changeStateOnLocalDelete() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleLocalUpdateEvent() {
+	public AbstractActionState changeStateOnLocalUpdate() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleLocalMoveEvent(Path oldFilePath) {
+	public AbstractActionState changeStateOnLocalMove(Path oldPath) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRecoverEvent(int versionToRecover) {
+	public AbstractActionState changeStateOnLocalRecover(int versionToRecover) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRemoteDeleteEvent() {
+	public AbstractActionState changeStateOnRemoteDelete() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRemoteUpdateEvent() {
+	public AbstractActionState changeStateOnRemoteUpdate() {
 		// TODO Auto-generated method stub
 		return new InitialState(action);
 	}
 
 	@Override
-	public AbstractActionState handleRemoteMoveEvent(Path oldFilePath) {
+	public AbstractActionState changeStateOnRemoteMove(Path oldFilePath) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -96,6 +97,66 @@ public class RecoverState extends AbstractActionState{
 			e.printStackTrace();
 		}
 		
+	}
+
+	@Override
+	public AbstractActionState changeStateOnRemoteCreate() {
+		// TODO Auto-generated method stub
+		return new ConflictState(action);
+	}
+
+	@Override
+	public AbstractActionState handleLocalCreate() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleLocalCreate");
+	}
+
+	@Override
+	public AbstractActionState handleLocalDelete() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleLocalDelete");
+	}
+
+	@Override
+	public AbstractActionState handleLocalUpdate() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleLocalUpdate");
+	}
+
+	@Override
+	public AbstractActionState handleLocalRecover(int version) {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleLocalRecover");
+	}
+
+	@Override
+	public AbstractActionState handleRemoteCreate() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleRemoteCreate");
+	}
+
+	@Override
+	public AbstractActionState handleRemoteDelete() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleRemoteDelete");
+	}
+
+	@Override
+	public AbstractActionState handleRemoteUpdate() {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleRemoteUpdate");
+	}
+
+	@Override
+	public AbstractActionState handleRemoteMove(Path path) {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleRemoteMove");
+	}
+
+	@Override
+	public AbstractActionState handleLocalMove(Path handleLocalMove) {
+		// TODO Auto-generated method stub
+		throw new NotImplementedException("RecoverState.handleLocalMove");
 	}
 
 }

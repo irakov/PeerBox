@@ -1,10 +1,13 @@
 package org.peerbox.watchservice;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 
 import org.apache.commons.io.FilenameUtils;
+import org.hive2hive.core.security.HashUtil;
 
 public class PathUtils {
 	
@@ -31,5 +34,25 @@ public class PathUtils {
 		String fileWithoutExt = FilenameUtils.removeExtension(file);
 		String ext = FilenameUtils.getExtension(file);
 		return Paths.get(fileWithoutExt + "_v" + version + "_recovered." + ext);
+	}
+	
+	public static String computeFileContentHash(Path path){
+		String newHash = "";
+		if(path != null && path.toFile() != null){
+			try {
+				byte[] rawHash = HashUtil.hash(path.toFile());
+				if(rawHash != null){
+					newHash = PathUtils.createStringFromByteArray(rawHash);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return newHash;
+	}
+	
+	public static String createStringFromByteArray(byte[] bytes){
+		String hashString = Base64.getEncoder().encodeToString(bytes);
+		return hashString;
 	}
 }

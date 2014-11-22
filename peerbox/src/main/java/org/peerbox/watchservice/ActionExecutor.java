@@ -1,11 +1,14 @@
 package org.peerbox.watchservice;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 
 import org.hive2hive.core.exceptions.IllegalFileLocation;
 import org.hive2hive.core.exceptions.NoPeerConnectionException;
@@ -38,7 +41,7 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 	public static final int MAX_EXECUTION_ATTEMPTS = 5;
 	
 	private FileEventManager fileEventManager;
-	private List<Action> executingActions;
+	private Vector<IAction> executingActions;
 	private boolean useNotifications;
 
 	public ActionExecutor(FileEventManager eventManager) {
@@ -48,7 +51,7 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 	
 	public ActionExecutor(FileEventManager eventManager, boolean waitForCompletion){
 		this.fileEventManager = eventManager;
-		executingActions = Collections.synchronizedList(new ArrayList<Action>());
+		executingActions = new Vector<IAction>();//Collections.synchronizedList(new ArrayList<IAction>());
 		useNotifications = waitForCompletion;
 	}
 	
@@ -96,15 +99,25 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 						// execute
 						next.getAction().addEventListener(this);
 						
+						logger.debug("Start execution: {}", next.getPath());
+						next.getAction().execute(fileEventManager.getFileManager());
 						if(useNotifications){
 							executingActions.add(next.getAction());
+						} else {
+							onActionExecuteSucceeded(next.getAction());
 						}
-						next.getAction().execute(fileEventManager.getFileManager());
 					} else {
 						if(executingActions.size() != 0) {
-//							System.out.println("Blocking action: " + executingActions.get(0).getFilePath() + " " + executingActions.get(0).getCurrentState().getClass());
-//							for(Action a : executingActions) {
-//								System.out.println("Blocking action: " + a.getFilePath() + " " + a.getCurrentState().getClass());
+							//System.out.println("Blocking action: " + executingActions.get(0).getFilePath() + " " + executingActions.get(0).getCurrentState().getClass());
+
+//							for(IAction a : executingActions) {
+//								System.out.println("Blocking action: " + j + " " + a.getFilePath() + " " + a.getCurrentState().getClass() + " " + a.hashCode());
+//								j++;
+//							}
+							
+//							for(int j = 0; j < executingActions.size(); j++){
+//								IAction a = executingActions.get(j);
+//								logger.trace("Blocking Action {} with ID {} and State {}", a.getFilePath(), a.getFilePath().hashCode(), a.getCurrentState().getClass());
 //							}
 						}
 						//System.out.println("Current state: " + next.getAction().getCurrentState().getClass().toString());
@@ -123,8 +136,15 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 				iex.printStackTrace();
 				return;
 			} catch (Exception ex) {
-				logger.error("Exception occurred: {}", ex.getMessage());
-				logger.error(ex.getStackTrace().toString());
+				logger.error("Exception occurred: {}", ex.getClass().getName());
+				for(int i = 0; i < ex.getStackTrace().length; i++){
+					StackTraceElement curr = ex.getStackTrace()[i];
+					logger.error("{} : {} ", curr.getClassName(), curr.getMethodName());
+					logger.error("{} : {} ", curr.getFileName(), curr.getLineNumber());
+				}
+			} catch (Throwable t){
+				logger.error("Throwable occurred: {}", t.getMessage());
+				logger.error(t.getStackTrace().toString());
 			}
 		}
 	}
@@ -171,7 +191,7 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 	 * @param action Action to be executed
 	 * @return true if ready to be executed, false otherwise
 	 */
-	private boolean isTimerReady(Action action) {
+	private boolean isTimerReady(IAction action) {
 		long ageMs = getActionAge(action);
 		return ageMs >= ACTION_WAIT_TIME_MS;
 	}
@@ -181,22 +201,40 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 	 * @param action
 	 * @return age in ms
 	 */
-	private long getActionAge(Action action) {
+	private long getActionAge(IAction action) {
 		return System.currentTimeMillis() - action.getTimestamp();
 	}
 
 
 	@Override
-	public void onActionExecuteSucceeded(Action action) {
-		executingActions.remove(action);
+	public void onActionExecuteSucceeded(IAction action) {
+
+		for(int i = 0; i < executingActions.size(); i++){
+			IAction a = executingActions.get(i);
+			logger.trace("{}     Action {} with ID {} and State {}", i, a.getFilePath(), a.getFilePath().hashCode(), a.getCurrentState().getClass());
+		}
+//		for(IAction a : executingActions){
+//			logger.trace("{}     Action {} with ID {} and State {}", i++, a.getFilePath(), a.hashCode(), a.getCurrentState().getClass());
+//		}
+//		
+		logger.debug("Action {} with state {} and ID {} removed", action.getFilePath(), action.getCurrentState().getClass(), action.hashCode());
+		action.onSucceed();
 		action.setIsUploaded(true);
-		logger.debug("Action successful: {} {}", action.getFilePath(), action.getCurrentState().getClass().toString());
+		logger.debug("Action successful: {} {} {}", action.getFilePath(), action.hashCode(), action.getCurrentState().getClass().toString());
 		//logger.debug("Currently executing/pending actions: {}/{}", executingActions.size(), fileEventManager.getFileComponentQueue().size());
+//		boolean contains = executingActions.contains(action);
+//		logger.debug("Contains {}: ", contains);
+		boolean changed = executingActions.remove(action);
+		if(changed){
+			logger.debug("changed on remove of {}", action.hashCode());
+		} else{
+			logger.debug("NOT changed on remove of {}", action.hashCode());
+		}
 	}
 
 
 	@Override
-	public void onActionExecuteFailed(Action action, RollbackReason reason) {
+	public void onActionExecuteFailed(IAction action, RollbackReason reason) {
 		//executingActions.remove(action);
 		logger.info("Action failed: {} {}.", action.getFilePath(), action.getCurrentState().getClass().toString());
 		try {
@@ -213,14 +251,45 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 		//logger.debug("Currently executing/pending actions: {}/{}", executingActions.size(), fileEventManager.getFileComponentQueue().size());
 	}
 
-	public void handleExecutionError(RollbackReason reason, Action action) throws NoSessionException, NoPeerConnectionException, IllegalFileLocation, InvalidProcessStateException{
+	public void handleExecutionError(RollbackReason reason, IAction action) throws NoSessionException, NoPeerConnectionException, IllegalFileLocation, InvalidProcessStateException{
 		ProcessError error = reason.getErrorType();
-		logger.trace("Re-initiate execution of {} {}.", action.getFilePath(), action.getCurrentState().getClass().toString());
-		if(action.getExecutionAttempts() <= MAX_EXECUTION_ATTEMPTS){
-			action.execute(fileEventManager.getFileManager());
+		
+		switch(error){
+	
+			case SAME_CONTENT:
+				logger.trace("H2H update of file {} failed, content hash did not change. {}", action.getFilePath(), fileEventManager.getRootPath().toString());
+				//Path localPathOfFailed = new File(fileEventManager.getRootPath(), action.getFilePathRelativeToRoot()).toPath();
+				FileComponent notModified = fileEventManager.getFileTree().getComponent(action.getFilePath().toString());
+				if(notModified == null){
+					logger.trace("FileComponent with path {} is null", action.getFilePath().toString());
+				}
+				
+				boolean changed = executingActions.remove(action);
+				if(!changed){
+					logger.trace("executingActions: Nothing deleted for {}", action.getFilePath().toString());
+				} else {
+					logger.trace("executingActions: Removed from queue {}", action.getFilePath().toString());
+				}
+				action.onSucceed();
+				break;
+			case PARENT_IN_USERFILE_NOT_FOUND:
+				logger.error("Code PARENT_IN_USERFILE_NOT_FOUND {} {}.", action.getFilePath(), action.getCurrentState().getClass().toString());
+				if(action.getExecutionAttempts() <= MAX_EXECUTION_ATTEMPTS){
+					action.execute(fileEventManager.getFileManager());
+				} else {
+					executingActions.remove(action);
+					logger.error("To many attempts, action of {} has not been executed again. Reason: PARENT_IN_USERFILE_NOT_FOUND", action.getFilePath());
+				}
+			default:
+				logger.trace("Re-initiate execution of {} {}.", action.getFilePath(), action.getCurrentState().getClass().toString());
+				if(action.getExecutionAttempts() <= MAX_EXECUTION_ATTEMPTS){
+					action.execute(fileEventManager.getFileManager());
+				} else {
+					executingActions.remove(action);
+					logger.error("To many attempts, action of {} has not been executed again. Reason: default", action.getFilePath());
+				}
 		}
-//		switch(error){
-//			case PARENT_IN_USERFILE_NOT_FOUND:
+					
 //			case PUT_FAILED:
 //			case GET_FAILED:
 //			case VERSION_FORK:

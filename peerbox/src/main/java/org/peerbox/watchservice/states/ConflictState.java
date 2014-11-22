@@ -20,43 +20,43 @@ public class ConflictState extends AbstractActionState {
 	}
 
 	@Override
-	public AbstractActionState handleLocalCreateEvent() {
+	public AbstractActionState changeStateOnLocalCreate() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleLocalDeleteEvent() {
+	public AbstractActionState changeStateOnLocalDelete() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleLocalUpdateEvent() {
+	public AbstractActionState changeStateOnLocalUpdate() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleLocalMoveEvent(Path oldFilePath) {
+	public AbstractActionState changeStateOnLocalMove(Path oldFilePath) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRemoteDeleteEvent() {
+	public AbstractActionState changeStateOnRemoteDelete() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRemoteUpdateEvent() {
+	public AbstractActionState changeStateOnRemoteUpdate() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public AbstractActionState handleRemoteMoveEvent(Path oldFilePath) {
+	public AbstractActionState changeStateOnRemoteMove(Path oldFilePath) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -71,9 +71,76 @@ public class ConflictState extends AbstractActionState {
 	}
 
 	@Override
-	public AbstractActionState handleRecoverEvent(int versionToRecover) {
+	public AbstractActionState changeStateOnLocalRecover(int versionToRecover) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public AbstractActionState changeStateOnRemoteCreate() {
+		// TODO Auto-generated method stub
+		return this;
+	}
+
+	@Override
+	public AbstractActionState handleLocalCreate() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public AbstractActionState handleLocalDelete() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public AbstractActionState handleLocalUpdate() {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleLocalMove(Path oldPath) {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleLocalRecover(int version) {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleRemoteCreate() {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleRemoteDelete() {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleRemoteUpdate() {
+		return null;
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public AbstractActionState handleRemoteMove(Path path) {
+		return null;
+		// TODO Auto-generated method stub
+		
 	}
 
 }
