@@ -110,6 +110,14 @@
 			<scope>compile</scope>
 		</dependency>
 		
+	    <!-- apache common lang: https://commons.apache.org/proper/commons-lang/ -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.3.2</version>
+			<scope>compile</scope>
+		</dependency>
+		
 
 		<!-- JUnit http://junit.org/ -->
 		<dependency>
@@ -132,14 +140,6 @@
 			<groupId>org.loadui</groupId>
 			<artifactId>testFx</artifactId>
 			<version>3.1.2</version>
-			<scope>test</scope>
-		</dependency>
-		
-		<!-- apache common lang: https://commons.apache.org/proper/commons-lang/ -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.3.2</version>
 			<scope>test</scope>
 		</dependency>
 		

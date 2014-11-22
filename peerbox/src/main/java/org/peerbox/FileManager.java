@@ -33,7 +33,7 @@ public class FileManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
 	private IFileManager h2hFileManager;
-	private FileEventManager fileEventManager = null;
+	private FileEventManager fileEventManager;
 
 	public FileManager(IFileManager h2hFileManager) {
 		this.h2hFileManager = h2hFileManager;
@@ -130,6 +130,8 @@ public class FileManager {
 		}
 	}
 	
+	
+	// TODO(CA): still needed?
 //	private class FileRecoveryListener implements IProcessComponentListener {
 //		private File file;
 //		public FileRecoveryListener(File file, int version) {
@@ -183,5 +185,9 @@ public class FileManager {
 
 	public void setFileEventManager(FileEventManager fileEventManager) {
 		this.fileEventManager = fileEventManager;
+	}
+
+	public IFileManager getH2HFileManager() {
+		return h2hFileManager;
 	}
 }

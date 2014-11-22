@@ -3,6 +3,7 @@ package org.peerbox.presenter;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
@@ -16,6 +17,7 @@ import org.hive2hive.core.exceptions.NoPeerConnectionException;
 import org.hive2hive.core.exceptions.NoSessionException;
 import org.hive2hive.processframework.exceptions.InvalidProcessStateException;
 import org.peerbox.ResultStatus;
+import org.peerbox.model.PeerBoxClient;
 import org.peerbox.model.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +34,30 @@ public class SetupCompletedController implements Initializable {
 	private NavigationService fNavigationService;
 	private UserManager fUserManager;
 	
+	
+	// !!TODO: this does not really belong here!!
+	private PeerBoxClient client;
+	
 	@Inject
-	public SetupCompletedController(NavigationService navigationService, UserManager userManager) {
+	public SetupCompletedController(NavigationService navigationService, UserManager userManager, PeerBoxClient client) {
 		this.fNavigationService = navigationService;
 		this.fUserManager = userManager;
+		this.client = client;
+		
 	}
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		
+		try {
+			client.start();
+			Platform.runLater(() -> {
+				closeWindowAction(null);
+			});
+//			closeWindowAction(null); // TODO(AA) refactoring.
+		} catch (Exception e) {
+			logger.error("Could not initialize client.");
+			e.printStackTrace();
+		}
 	}
 	
 	public void closeWindowAction(ActionEvent event) {

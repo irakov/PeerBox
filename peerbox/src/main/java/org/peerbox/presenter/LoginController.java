@@ -33,7 +33,6 @@ import org.peerbox.presenter.validation.SelectRootPathUtils;
 import org.peerbox.presenter.validation.ValidationUtils.ValidationResult;
 import org.peerbox.view.ViewNames;
 import org.peerbox.view.controls.ErrorLabel;
-import org.peerbox.watchservice.FolderWatchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -233,32 +232,8 @@ public class LoginController implements Initializable {
 	private void onLoginSucceeded() {
 		logger.debug("Login task succeeded: user {} logged in.", getUsername());
 		saveLoginConfig();
-
-		// Start FolderWatchService
-		startWatchService();
-
 		resetForm();
 		fNavigationService.navigate(ViewNames.SETUP_COMPLETED_VIEW);
-	}
-
-	private void startWatchService() {
-
-		FolderWatchService watchService = null;
-
-		try {
-			watchService = new FolderWatchService(userConfig.getRootPath());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		try {
-			watchService.start();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
 	}
 
 	private void saveLoginConfig() {
