@@ -51,6 +51,7 @@ public class SetupCompletedController implements Initializable {
 		try {
 			client.start();
 			Platform.runLater(() -> {
+				Platform.setImplicitExit(false); // do not exit if stage closed.
 				closeWindowAction(null);
 			});
 //			closeWindowAction(null); // TODO(AA) refactoring.
