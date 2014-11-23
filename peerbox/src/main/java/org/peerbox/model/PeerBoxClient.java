@@ -1,10 +1,9 @@
 package org.peerbox.model;
 
-import java.io.IOException;
-
-import org.hive2hive.core.api.interfaces.IH2HNode;
 import org.peerbox.FileManager;
 import org.peerbox.UserConfig;
+import org.peerbox.utils.OsUtils;
+import org.peerbox.utils.WinRegistry;
 import org.peerbox.watchservice.FileEventManager;
 import org.peerbox.watchservice.FolderWatchService;
 
@@ -38,6 +37,11 @@ public class PeerBoxClient {
 		fileManager.getH2HFileManager().subscribeFileEvents(fileEventManager);
 		
 		watchService.start();
+		
+		if(OsUtils.isWindows()) {
+			WinRegistry.setApiServerPort(30000);
+			WinRegistry.setRootPath(userConfig.getRootPath());
+		}
 	}
 	
 }
