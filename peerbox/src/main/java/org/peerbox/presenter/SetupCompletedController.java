@@ -49,11 +49,11 @@ public class SetupCompletedController implements Initializable {
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		try {
+			Platform.setImplicitExit(false); // do not exit even though we close window.
 			client.start();
 			Platform.runLater(() -> {
-				closeWindowAction(null);
+				closeWindowAction(null);// TODO(AA) refactoring.
 			});
-//			closeWindowAction(null); // TODO(AA) refactoring.
 		} catch (Exception e) {
 			logger.error("Could not initialize client.");
 			e.printStackTrace();

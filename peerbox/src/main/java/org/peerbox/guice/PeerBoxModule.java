@@ -2,8 +2,10 @@ package org.peerbox.guice;
 
 
 import org.peerbox.FileManager;
+import org.peerbox.interfaces.IFileVersionSelectionUI;
 import org.peerbox.model.H2HManager;
 import org.peerbox.model.UserManager;
+import org.peerbox.view.RecoverFileStage;
 import org.peerbox.view.tray.AbstractSystemTray;
 import org.peerbox.view.tray.JSystemTray;
 
@@ -26,6 +28,8 @@ public class PeerBoxModule extends AbstractModule {
 		bindEventBus();
 		bindSystemTray();
 		bindPrimaryStage();
+		
+		bind(IFileVersionSelectionUI.class).to(RecoverFileStage.class);
 	}
 
 	private void bindSystemTray() {

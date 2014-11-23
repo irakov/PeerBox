@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.hive2hive.core.api.interfaces.IH2HNode;
 import org.peerbox.FileManager;
 import org.peerbox.UserConfig;
+import org.peerbox.server.IServer;
 import org.peerbox.watchservice.FileEventManager;
 import org.peerbox.watchservice.FolderWatchService;
 
@@ -18,10 +19,12 @@ public class PeerBoxClient {
 	private FileEventManager fileEventManager;
 	private FileManager fileManager;
 	private FolderWatchService watchService;
+	private IServer apiServer;
 	
 	@Inject
-	public PeerBoxClient(FileManager fileManager, UserConfig userConfig) {
+	public PeerBoxClient(FileManager fileManager, IServer apiServer, UserConfig userConfig) {
 		this.fileManager = fileManager;
+		this.apiServer = apiServer;
 		this.userConfig = userConfig;
 	}
 	
@@ -38,6 +41,8 @@ public class PeerBoxClient {
 		fileManager.getH2HFileManager().subscribeFileEvents(fileEventManager);
 		
 		watchService.start();
+		
+		apiServer.start();
 	}
 	
 }

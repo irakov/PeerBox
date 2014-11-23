@@ -82,7 +82,7 @@ public class FileManager {
 		return component;
 	}
 
-	public IProcessComponent recover(File file, PeerboxVersionSelector versionSelector)
+	public IProcessComponent recover(File file, IVersionSelector versionSelector)
 			throws FileNotFoundException, IllegalArgumentException, NoSessionException,
 			NoPeerConnectionException, InvalidProcessStateException {
 		logger.debug("RECOVER - {}", file);
