@@ -23,11 +23,14 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableView;
+import javafx.stage.Stage;
 import javafx.util.Callback;
 
 import org.apache.commons.io.FileUtils;
@@ -35,16 +38,16 @@ import org.hive2hive.core.exceptions.NoPeerConnectionException;
 import org.hive2hive.core.exceptions.NoSessionException;
 import org.hive2hive.core.model.IFileVersion;
 import org.hive2hive.core.processes.files.recover.IVersionSelector;
+import org.hive2hive.processframework.RollbackReason;
 import org.hive2hive.processframework.exceptions.InvalidProcessStateException;
+import org.hive2hive.processframework.interfaces.IProcessComponent;
+import org.hive2hive.processframework.interfaces.IProcessComponentListener;
 import org.peerbox.FileManager;
 import org.peerbox.interfaces.IFileVersionSelectorEventListener;
 
 import com.google.inject.Inject;
 
 public class RecoverFileController  implements Initializable, IFileVersionSelectorEventListener {
-	
-	private final StringProperty fileToRecoverProperty;
-	private Path fileToRecover;
 	
 	@FXML
 	private TableView<IFileVersion> tblFileVersions;
@@ -58,6 +61,13 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 	private Label lblNumberOfVersions;
 	@FXML
 	private Button btnRecover;
+	@FXML
+	private Label lblStatus;
+	
+	private final StringProperty fileToRecoverProperty;
+	private final StringProperty statusProperty;
+	
+	private Path fileToRecover;
 	
 	private final ObservableList<IFileVersion> fileVersions;
 	
@@ -67,98 +77,28 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 	
 	public RecoverFileController() {
 		this.fileToRecoverProperty = new SimpleStringProperty();
+		this.statusProperty = new SimpleStringProperty();
 		fileVersions = FXCollections.observableArrayList();
 		versionSelector = new FileVersionSelector(this);
 	}
 	
-	@Inject
-	public void setFileManager(FileManager fileManager) {
-		this.fileManager = fileManager;
-	}
-	
-	public void setFileToRecover(Path fileToRecover) {
-		this.fileToRecover = fileToRecover;
-		this.fileToRecoverProperty.setValue(fileToRecover.toString());
-		loadVersions();
-	}
-
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		
 		initializeTable();
 		
 		lblNumberOfVersions.textProperty().bind(Bindings.size(fileVersions).asString());
 		btnRecover.disableProperty().bind(tblFileVersions.getSelectionModel().selectedItemProperty().isNull());
 	}
-	
-	private void loadVersions() {
-		
-		try {
-			fileManager.recover(fileToRecover.toFile(), versionSelector);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSessionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoPeerConnectionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidProcessStateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
-		// DUMMY DATA!
-		
-//		fileVersions.add(new IFileVersion() {
-//	
-//			@Override
-//			public int getIndex() {
-//				return 1;
-//			}
-//	
-//			@Override
-//			public BigInteger getSize() {
-//				return BigInteger.valueOf(1234567);
-//			}
-//	
-//			@Override
-//			public long getDate() {
-//				return System.currentTimeMillis();
-//			}
-//			
-//		});
-//		
-//		fileVersions.add(new IFileVersion() {
-//	
-//			@Override
-//			public int getIndex() {
-//				return 2;
-//			}
-//	
-//			@Override
-//			public BigInteger getSize() {
-//				return BigInteger.valueOf(12345670);
-//			}
-//	
-//			@Override
-//			public long getDate() {
-//				return 11113112;
-//			}
-//			
-//		});
-	}
 
-	private void sortTable() {
-		// sorting by index DESC
-		tblColIndex.setSortType(TableColumn.SortType.DESCENDING);
-		tblFileVersions.getSortOrder().add(tblColIndex);
-		tblFileVersions.sort();
+	@Inject
+	public void setFileManager(FileManager fileManager) {
+		this.fileManager = fileManager;
+	}
+	
+	public void setFileToRecover(final Path fileToRecover) {
+		this.fileToRecover = fileToRecover;
+		this.fileToRecoverProperty.setValue(fileToRecover.toString());
+		loadVersions();
 	}
 
 	private void initializeTable() {
@@ -199,15 +139,86 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 		);
 	}
 
-	public void cancelAction(ActionEvent event) {
-		versionSelector.selectVersion((IFileVersion)null);
+	private void sortTable() {
+		// sorting by index DESC
+		tblColIndex.setSortType(TableColumn.SortType.DESCENDING);
+		tblFileVersions.getSortOrder().add(tblColIndex);
+		tblFileVersions.sort();
 	}
+
+	private void showFileRecoverySucceededDialog() {
+		Alert a = new Alert(AlertType.INFORMATION);
+		a.setTitle("File Recovered");
+		a.setHeaderText("File recovery finished");
+		a.setContentText(String.format("The name of the recovered file is: %s", versionSelector.getRecoveredFileName()));
+		a.showAndWait();
+		getStage().close();
+	}
+
+	private void showFileRecoveryFailedDialog(String message) {
+		
+		getStage().close();
+	}
+
+	@Override
+	public void onAvailableVersionsReceived(List<IFileVersion> availableVersions) {
+		Platform.runLater(() -> {
+			fileVersions.addAll(availableVersions);
+			setStatus("");
+			sortTable();
+		});
+	}
+
+	private void loadVersions() {
+		
+			try {
+				setStatus("Retrieving available versions...");
+				
+				IProcessComponent component = fileManager.recover(fileToRecover.toFile(), versionSelector);
+				component.attachListener(new IProcessComponentListener() {
 	
+					@Override
+					public void onSucceeded() {
+						Platform.runLater(() -> {
+							showFileRecoverySucceededDialog();
+						});
+					}
+	
+					@Override
+					public void onFailed(RollbackReason reason) {
+						Platform.runLater(() -> {
+							showFileRecoveryFailedDialog(reason.getHint());
+						});
+					}
+				});
+			
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoSessionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoPeerConnectionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InvalidProcessStateException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+
 	public void recoverAction(ActionEvent event) {
 		IFileVersion selectedVersion = tblFileVersions.getSelectionModel().getSelectedItem();
+		if(selectedVersion != null) {
+			setStatus("Downloading file...");
+		}
 		versionSelector.selectVersion(selectedVersion);
 	}
-	
+
+	public void cancelAction(ActionEvent event) {
+		versionSelector.selectVersion((IFileVersion)null);
+		getStage().close();
+	}
 	
 	public String getFileToRecover() {
 		return fileToRecoverProperty.get();
@@ -221,31 +232,38 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 		return fileToRecoverProperty;
 	}
 	
-	@Override
-	public void onAvailableVersionsReceived(List<IFileVersion> availableVersions) {
-		Platform.runLater(() -> {
-			fileVersions.addAll(availableVersions);
-			sortTable();
-		});
+	public String getStatus() {
+		return statusProperty.get();
+	}
+
+	public void setStatus(String status) {
+		this.statusProperty.set(status);
+	}
+
+	public StringProperty statusProperty() {
+		return statusProperty;
 	}
 	
+	private Stage getStage() {
+		return (Stage)tblFileVersions.getScene().getWindow();
+	}
 	private class FileVersionSelector implements IVersionSelector {
 		
 		private final Lock selectionLock = new ReentrantLock();
 		private final Condition versionSelectedCondition  = selectionLock.newCondition();
 		private IFileVersionSelectorEventListener listener; 
 		private IFileVersion selectedVersion;
+		private String recoveredFileName;
 		
 		private volatile boolean gotAvailableVersions = false;
 		private volatile boolean isCancelled = false;
-		
-		// TODO: implement cancelling
 		
 		public FileVersionSelector(IFileVersionSelectorEventListener listener) {
 			if(listener == null) {
 				throw new IllegalArgumentException("Argument listener must not be null.");
 			}
 			
+			this.recoveredFileName = "";
 			this.listener = listener;
 		}
 		
@@ -269,14 +287,22 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 		public IFileVersion selectVersion(List<IFileVersion> availableVersions) {
 			
 			if(isCancelled) {
+				// not interested in versions anymore -> select nothing (i.e. cancel)
 				return null;
 			}
 			
-			selectionLock.lock();
 			try {
+				selectionLock.lock();
 				if(availableVersions != null) {
 					gotAvailableVersions = true;
+					try {
+						Thread.sleep(10000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					listener.onAvailableVersionsReceived(availableVersions);
+					// wait here until selectVersion(version) is called
 					versionSelectedCondition.awaitUninterruptibly();
 				}
 			} finally {
@@ -286,13 +312,23 @@ public class RecoverFileController  implements Initializable, IFileVersionSelect
 			return selectedVersion;
 		}
 
+		public String getRecoveredFileName() {
+			return recoveredFileName;
+		}
+
 		@Override
 		public String getRecoveredFileName(String fullName, String name, String extension) {
-			// TODO Auto-generated method stub
-			return null;
+			// generate a new file name indicating that the file is restored
+			Date versionDate = new Date(selectedVersion.getDate());
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd-HH_mm_ss");
+			
+			String newFileName = String.format("%s-%s", name, sdf.format(versionDate));
+			if(extension!=null && extension.length() > 0) {
+				newFileName = String.format("%s.%s", newFileName, extension);
+			}
+			recoveredFileName = newFileName;
+			return newFileName;
 		}
-		
 	}
-
 	
 }

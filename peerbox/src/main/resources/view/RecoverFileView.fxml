@@ -28,10 +28,11 @@
             <Label fx:id="lblNumberOfVersions" text="0" />
          </children>
       </HBox>
-      <HBox spacing="10.0">
+      <HBox alignment="CENTER_LEFT" spacing="10.0">
          <children>
             <Button cancelButton="true" mnemonicParsing="false" onAction="#cancelAction" text="Cancel" />
             <Button fx:id="btnRecover" defaultButton="true" mnemonicParsing="false" onAction="#recoverAction" text="Recover" />
+            <Label fx:id="lblStatus" text="${controller.status}" />
          </children>
       </HBox>
    </children>
