@@ -120,7 +120,7 @@ public class FileWalker extends AbstractWatchService {
 					logger.trace("create event for {} ", path);
 					eventManager.onLocalFileCreated(path);
 				}
-			}
+			} 
 			return super.preVisitDirectory(path, attr);
 		}
 

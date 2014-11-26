@@ -103,6 +103,7 @@ public class InitialState extends AbstractActionState {
 
 	@Override
 	public AbstractActionState handleLocalCreate() {
+
 //		action.putFile(action.getFilePath().toString(), action.getFile());
 		IFileEventManager eventManager = action.getEventManager();
 		if(action.getFilePath().toFile().isDirectory()){

@@ -86,6 +86,7 @@ public abstract class AbstractActionState {
 			deletedFiles.put(action.getFile().getContentHash(), action.getFile());
 			logger.debug("Put deleted file {} with hash {} to SetMultimap<String, FileComponent>", action.getFilePath(), action.getFile().getContentHash());
 		} else {
+
 			Map<String, FolderComposite> deletedFolders = eventManager.getDeletedByContentNamesHash();
 			logger.debug("Added folder {} with structure hash {} to deleted folders.", action.getFilePath(), action.getFile().getStructureHash());
 			deletedFolders.put(action.getFile().getStructureHash(), (FolderComposite)action.getFile());
