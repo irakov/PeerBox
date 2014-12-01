@@ -11,16 +11,10 @@ import org.hive2hive.processframework.exceptions.InvalidProcessStateException;
 import org.peerbox.FileManager;
 import org.peerbox.watchservice.Action;
 import org.peerbox.watchservice.FileComponent;
-import org.peerbox.watchservice.FileEventManager;
 import org.peerbox.watchservice.IFileEventManager;
 import org.peerbox.watchservice.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import ch.qos.logback.core.status.OnConsoleStatusListener;
-
-import com.google.common.collect.SetMultimap;
-import com.google.common.io.Files;
 
 public class EstablishedState extends AbstractActionState{
 
@@ -51,7 +45,7 @@ public class EstablishedState extends AbstractActionState{
 	@Override
 	public AbstractActionState changeStateOnLocalMove(Path oldFilePath) {
 		// TODO Auto-generated method stub
-		return new RemoteMoveState(action, oldFilePath);
+		return new LocalMoveState(action, oldFilePath);
 	}
 
 	@Override
@@ -180,11 +174,11 @@ public class EstablishedState extends AbstractActionState{
 	public AbstractActionState handleRemoteMove(Path dstPath) {
 		Path oldPath = action.getFilePath();
 		logger.debug("Modify the tree accordingly. Src: {} Dst: {}", action.getFilePath(), dstPath);
-		FileComponent deleted = action.getEventManager().getFileTree().deleteComponent(action.getFilePath().toString());
+		//FileComponent deleted = action.getEventManager().getFileTree().deleteComponent(action.getFilePath().toString());
 		action.getEventManager().getFileTree().putComponent(dstPath.toString(), action.getFile());
 		
 		
-		Path path = action.getFilePath();
+		Path path = dstPath;
 		logger.debug("Execute REMOTE MOVE: {}", path);
 		try {
 			com.google.common.io.Files.move(oldPath.toFile(), path.toFile());
