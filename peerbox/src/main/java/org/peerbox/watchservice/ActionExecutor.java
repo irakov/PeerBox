@@ -3,7 +3,6 @@ package org.peerbox.watchservice;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -164,7 +163,7 @@ public class ActionExecutor implements Runnable, IActionEventListener {
 		Map<String, FolderComposite> deletedByContentNamesHash = fileEventManager.getDeletedByContentNamesHash();
 		if(next instanceof FolderComposite){
 			FolderComposite nextAsFolder = (FolderComposite)next;
-			deletedByContentNamesHash.remove(nextAsFolder.getContentNamesHash());
+			deletedByContentNamesHash.remove(nextAsFolder.getStructureHash());
 		}
 
 	}

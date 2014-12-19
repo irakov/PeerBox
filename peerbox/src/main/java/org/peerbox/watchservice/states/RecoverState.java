@@ -1,15 +1,12 @@
 package org.peerbox.watchservice.states;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.nio.file.Path;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.hive2hive.core.exceptions.NoPeerConnectionException;
 import org.hive2hive.core.exceptions.NoSessionException;
 import org.hive2hive.processframework.exceptions.InvalidProcessStateException;
 import org.hive2hive.processframework.exceptions.ProcessExecutionException;
-import org.hive2hive.processframework.interfaces.IProcessComponent;
 import org.peerbox.FileManager;
 import org.peerbox.h2h.ProcessHandle;
 import org.peerbox.watchservice.Action;

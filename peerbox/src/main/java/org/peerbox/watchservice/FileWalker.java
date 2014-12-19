@@ -75,7 +75,7 @@ public class FileWalker extends AbstractWatchService {
 	}
 	
 	public String getContentNamesHashOfWalkedFolder(){
-		return fileTree.getContentNamesHash();
+		return fileTree.getStructureHash();
 		/*
 		 * Create new Map<String, FileComponent> in which deleted components are saved with
 		 * their contentNamesHash as key. if found -> move event!

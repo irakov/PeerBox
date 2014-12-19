@@ -90,7 +90,7 @@ public class RemoteUpdateState extends AbstractActionState {
 	@Override
 	public AbstractActionState handleLocalUpdate() {
 //		throw new NotImplException("RemoteUpdateState.handleLocalUpdate");
-		action.getFile().bubbleContentHashUpdate();
+		action.getFile().updateContentHash();
 		return changeStateOnLocalUpdate();
 	}
 

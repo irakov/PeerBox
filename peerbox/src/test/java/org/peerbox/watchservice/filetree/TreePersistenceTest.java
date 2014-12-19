@@ -85,8 +85,8 @@ public class TreePersistenceTest {
 	public void fileTreeSerializeTest(){
 
 		FolderComposite fileTree = new FolderComposite(Paths.get(parentPath), true);
-		fileTree.putComponent(fileOnRootStr, new FileLeaf(Paths.get(fileOnRootStr)));
-		fileTree.putComponent(fileInNewDirStr, new FileLeaf(Paths.get(fileInNewDirStr)));
+		fileTree.putComponent(fileOnRootStr, new FileLeaf(Paths.get(fileOnRootStr), true));
+		fileTree.putComponent(fileInNewDirStr, new FileLeaf(Paths.get(fileInNewDirStr), true));
 		
 		FileComponent component = fileTree.getComponent(fileOnRootStr);
 		assertTrue(component instanceof FileLeaf);

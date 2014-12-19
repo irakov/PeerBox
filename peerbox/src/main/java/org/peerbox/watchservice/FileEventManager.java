@@ -148,12 +148,13 @@ public class FileEventManager implements IFileEventManager, ILocalFileEventListe
 			logger.debug("File {} is a folder. Update rejected.", path);
 			return;
 		}
-		String newHash = PathUtils.computeFileContentHash(path);
-		if(file.getContentHash().equals(newHash)){
+		
+		boolean hashChanged = file.updateContentHash();
+		if(!hashChanged){
 			logger.debug("Content hash did not change for file {}. Update rejected.", path);
 			return;
 		}
-		file.updateContentHash(newHash);
+		
 		file.getAction().handleLocalUpdateEvent();
 	}
 	
@@ -325,7 +326,7 @@ public class FileEventManager implements IFileEventManager, ILocalFileEventListe
 	
 		fileComponentQueue.remove(moveCandidate);
 		deletedByContentHash.remove(moveCandidate.getContentHash(), moveCandidate);
-		deletedByContentNamesHash.remove(moveCandidate.getContentNamesHash());
+		deletedByContentNamesHash.remove(moveCandidate.getStructureHash());
 		moveCandidate.getAction().handleLocalMoveEvent(oldPath);
 		fileComponentQueue.add(moveCandidate);
 	}
