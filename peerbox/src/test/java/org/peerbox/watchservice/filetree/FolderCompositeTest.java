@@ -82,8 +82,8 @@ public class FolderCompositeTest {
 	public void fileTreeOperationsTest(){
 
 		FolderComposite fileTree = new FolderComposite(Paths.get(parentPath), true);
-		FileLeaf fileOnRoot = new FileLeaf(Paths.get(fileOnRootStr));
-		FileLeaf fileInNewDir = new FileLeaf(Paths.get(fileInNewDirStr));
+		FileLeaf fileOnRoot = new FileLeaf(Paths.get(fileOnRootStr), true);
+		FileLeaf fileInNewDir = new FileLeaf(Paths.get(fileInNewDirStr), true);
 		fileInNewDir.getAction().setFile(fileInNewDir);
 		fileOnRoot.getAction().setFile(fileOnRoot);
 		fileTree.putComponent(fileOnRootStr, fileOnRoot);
@@ -116,7 +116,7 @@ public class FolderCompositeTest {
 	
 	private void bubbleContentHashUpdateTest(FolderComposite fileTree){
 		//put a new file in a lower directory
-		FileLeaf fileInDirInDirOnRoot = new FileLeaf(Paths.get(fileInDirInDirOnRootStr));
+		FileLeaf fileInDirInDirOnRoot = new FileLeaf(Paths.get(fileInDirInDirOnRootStr), true);
 		fileInDirInDirOnRoot.getAction().setFile(fileInDirInDirOnRoot);
 		fileTree.putComponent(fileInDirInDirOnRootStr, fileInDirInDirOnRoot);
 		FileComponent component = fileTree.getComponent(fileInDirInDirOnRootStr);
@@ -135,7 +135,7 @@ public class FolderCompositeTest {
 			e.printStackTrace();
 		}
 		
-		fileInDirInDirOnRoot.bubbleContentHashUpdate();
+		fileInDirInDirOnRoot.updateContentHash();
 		String newHashRoot = fileTree.getContentHash();
 		String newHashFile = component.getContentHash();
 
@@ -159,20 +159,20 @@ public class FolderCompositeTest {
 		component = fileTree.getComponent(fileInNewDirStr);
 		assertTrue(component instanceof FileLeaf);
 		
-		String oldContentNamesHashRoot = fileTree.getContentNamesHash();
+		String oldContentNamesHashRoot = fileTree.getStructureHash();
 		//delete subdirectory, ensure contained files and directories are deleted as well
 		component = fileTree.deleteComponent(dirOnRootStr);
-		assertFalse(fileTree.getContentNamesHash().equals(oldContentNamesHashRoot));
-		oldContentNamesHashRoot = fileTree.getContentNamesHash();
+		assertFalse(fileTree.getStructureHash().equals(oldContentNamesHashRoot));
+		oldContentNamesHashRoot = fileTree.getStructureHash();
 		assertTrue(component instanceof FolderComposite);
 		
 		
 		component = fileTree.deleteComponent(dirInDirOnRootStr);
 		assertNull(component);
-		assertTrue(fileTree.getContentNamesHash().equals(oldContentNamesHashRoot));
+		assertTrue(fileTree.getStructureHash().equals(oldContentNamesHashRoot));
 		component = fileTree.deleteComponent(fileInNewDirStr);
 		assertNull(component);
-		assertTrue(fileTree.getContentNamesHash().equals(oldContentNamesHashRoot));
+		assertTrue(fileTree.getStructureHash().equals(oldContentNamesHashRoot));
 	}
 	
 	
