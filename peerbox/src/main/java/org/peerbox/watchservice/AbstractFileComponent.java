@@ -17,10 +17,6 @@ public abstract class AbstractFileComponent implements FileComponent {
 		this.contentHash = "";
 		this.contentNamesHash = "";
 		this.updateContentHashes = updateContentHashes;
-		
-		if (updateContentHashes) {
-			updateContentHash();
-		}
 	}
 
 	@Override

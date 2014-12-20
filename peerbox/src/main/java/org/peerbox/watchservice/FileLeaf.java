@@ -11,6 +11,10 @@ public class FileLeaf extends AbstractFileComponent {
 	
 	public FileLeaf(Path path, boolean updateContentHashes) {
 		super(path, updateContentHashes);
+		
+		if (updateContentHashes) {
+			updateContentHash();
+		}
 	}
 	
 	/**
