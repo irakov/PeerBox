@@ -13,16 +13,17 @@ public class PathUtilsTest {
 	
 	private String filename = "file1.txt";
 	private String directory = "exampledir";
-	private Path oneLevel = Paths.get(File.separator + filename);
-	private Path twoLevels = Paths.get(File.separator + directory + File.separator + filename);
-	private Path twoLevelsWithoutFS = Paths.get(directory + File.separator + filename);
+	
+	private Path oneLevel = Paths.get(filename);
+	private Path twoLevels = Paths.get(directory, filename);
+	private Path twoLevelsWithoutFS = Paths.get(directory, filename);
 	private Path zeroLevels = Paths.get("");
 	
 	@Test
 	public void getNextPathFragmentTest(){
+		String result = null;
 		
-		
-		String result = PathUtils.getNextPathFragment(oneLevel.toString());
+		result = PathUtils.getNextPathFragment(oneLevel.toString());
 		assertEquals(result, filename);
 		
 		result = PathUtils.getNextPathFragment(twoLevels.toString());
