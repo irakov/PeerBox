@@ -8,6 +8,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({ 
 	FileLeafTest.class,
 	FolderCompositeTest.class,
+	TreeIntegration.class,
 	PathUtilsTest.class,
 })
 

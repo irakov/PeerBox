@@ -279,6 +279,10 @@ public class FolderComposite extends AbstractFileComponent {
 	public boolean isFile() {
 		return false;
 	}
+	
+	public boolean isRoot() {
+		return isRoot;
+	}
 
 	@Override
 	public boolean isReady() {

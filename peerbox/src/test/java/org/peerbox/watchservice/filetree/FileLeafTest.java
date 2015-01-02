@@ -41,11 +41,12 @@ public class FileLeafTest {
 	private static Path folderA;
 	private static Path folderB;
 	
+	
 	private static final boolean cleanupFolder = true;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		basePath = Paths.get("PeerBox_Test_Tree");
+		basePath = Paths.get(FileUtils.getTempDirectoryPath(), "PeerBox_Test_Tree");
 		if(!Files.exists(basePath)) {
 			Files.createDirectory(basePath);
 		}
